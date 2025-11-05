@@ -6,6 +6,7 @@ using UnityEngine;
  * Copyright Michael Jenkin 2025
  * Version History
  * 
+ * V1.2 - set up for new two task version
  * V1.1 - use a pointer for the final task rather than moving the point of view.
  *      - do some general cleanup in code style
  * V1.0 - based on the OSC software
@@ -13,6 +14,16 @@ using UnityEngine;
 
 public class WolrdCreator : MonoBehaviour
 {
+
+    private enum UIState
+    {
+        Initialize,
+        WelcomeScreen,
+        ConfirmScreen,
+        DoingExperiment,
+        ExperimentDone,
+    };
+
     private enum ExperimentState
     {
         BeforeMotion,
@@ -27,6 +38,17 @@ public class WolrdCreator : MonoBehaviour
         Done
     };
 
+    private const float _motionStep = 0.01f; // how big a step to make for a keypress
+    private const float _turnStep = 0.1f; // step size for turn keypress
+    private const float _reticleDistance = 1.0f; // distance to orientaiton reticle
+    private const float _velocity = 2.0f;  // speed along a straight line
+    private const float _spinV = 30.0f;  // abs rotational velocity
+
+    
+
+    private UIState _uiState = UIState.Initialize;
+
+
     private const float SLEEP_TIME = 0.0f;
     private SphereField sf;
     private ExperimentState experimentState = ExperimentState.BeforeMotion;
@@ -38,12 +60,9 @@ public class WolrdCreator : MonoBehaviour
     private float _length1 = 4.0f;
     private float _length2 = 6.0f;
     private float _turn = 60.0f;  // absolute value of turn
-    private const float _velocity = 2.0f;  // speed along a straight line
-    private const float _spinV = 30.0f;  // abs rotational velocity
+
     private float _spinDir = 1.0f;  // +1 right, -1 left
-    private const float _motionStep = 0.01f; // how big a step to make for a keypress
-    private const float _turnStep = 0.1f; // step size for turn keypress
-    private const float _reticleDistance = 1.0f; // distance to orientaiton reticle
+
     private bool _pitch = true;   // pitch (true) or yaw (false)
     private bool _turnRight = false; // true is to the rigght (yaw) or up (pitch)
     private float _pan, _tilt;
@@ -52,11 +71,14 @@ public class WolrdCreator : MonoBehaviour
     private GameObject _reticle = null;
     private GameObject _camera = null;
     private GameObject _welcome = null;
+    private GameObject _dialog = null;
+    private GameObject _home = null;
 
     private float _targetDistance1, _targetDistance2, _turnAngle, _directionAngle, _directionDistance;
 
     private const int NCONDS = 12;
     private int _cond = 0;
+    private int _experiment = -1;
     
     float[] c1 = new float[5] { 4.0f, 4.0f, 70.0f, 1.0f, 1.0f }; // l1, l2, theta, pan/tilt, dir1/dir2
     float[] c2 = new float[5] { 4.0f, 4.0f, 105.0f, 1.0f, -1.0f }; // l1, l2, theta, pan/tilt, dir1/dir2
@@ -72,15 +94,39 @@ public class WolrdCreator : MonoBehaviour
     float[] c12 = new float[5] { 8.0f, 8.0f, 120.0f, 1.0f, 1.0f }; // l1, l2, theta, pan/tilt, dir1/dir2
     float[][] _conditions = new float[12][];
     
- 
-    
+    /**
+     * All of the non-scene texture objects are initially active (so they are easy to find). 
+     * Get links to them, then make them inactive (except for the camera :-)
+     **/
+    private void GetGameObjects()
+    {
+        _adjustTarget = GameObject.Find("Target");
+        _adjustTarget.SetActive(false);
 
+        _reticle = GameObject.Find("Reticle");
+        _reticle.SetActive(false);
 
+        _camera = GameObject.Find("Camera Holder");
 
+        _dialog = GameObject.Find("Dialog");
+        _dialog.SetActive(false);
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+        _home = GameObject.Find("Homebase");
+        _home.SetActive(false);
+
+        _welcome = GameObject.Find("Welcome");
+        _welcome.SetActive(false);
+    }
+
+    /**
+     * Start is called once before the first execution of Update after the MonoBehaviour is created
+     *
+     **/
     void Start()
     {
+        GetGameObjects();
+        _adjustTarget.transform.localScale = new Vector3(SphereField.HALLWAY_RADIUS, SphereField.HALLWAY_RADIUS, SphereField.HALLWAY_RADIUS);
+
         Debug.Log("In WordCreator");
         _conditions[0] = c1;
         _conditions[1] = c2;
@@ -95,31 +141,77 @@ public class WolrdCreator : MonoBehaviour
         _conditions[10] = c11;
         _conditions[11] = c12;
 
-  
 
-        _adjustTarget = GameObject.Find("Target");
-        _adjustTarget.SetActive(false);
 
-        _reticle = GameObject.Find("Reticle");
-        _reticle.SetActive(false);
-
-        _camera = GameObject.Find("Camera Holder");
-
-        _welcome = GameObject.Find("Welcome");
-        _welcome.SetActive(true);
-
-        _adjustTarget.transform.localScale = new Vector3(SphereField.HALLWAY_RADIUS, SphereField.HALLWAY_RADIUS, SphereField.HALLWAY_RADIUS);
-
-        
     }
 
-    // Update is called once per frame
+    /**
+     * This is called once every time tick. The entire experiment's UI is in one of a small
+     * number of states. The work of the real experiment is done elsewhere
+     **/
     void Update()
     {
-        float _distance, _angle;
-        float x, y, z, tx, ty, tz;
+        Dialog d = _dialog.GetComponent<Dialog>();
+        Debug.Log("Update");
 
-        Debug.Log("In update");
+        switch (_uiState)
+        {
+            case UIState.Initialize:
+                d.SetDialogTitle("Homebase");
+                d.SetDialogElements("Choose Experiment", new string[] { "Adjust Target?, "Where Did I Go?" });
+                       
+                _dialog.SetActive(true);
+                _uiState = UIState.WelcomeScreen;
+                break;
+            case UIState.WelcomeScreen:
+                Debug.Log("Welcome screen");
+                int response = d.GetResponse();
+                Debug.Log(response);
+                if (response >= 0)
+                {
+                    _experiment = response;
+                    string[] confirmString = { "????", "Back" };
+                    if (_experiment == 0)
+                        confirmString[0] = "Do 'Adjust Target'";
+                    else
+                        confirmString[0] = "Do 'Where Did I Go'";
+                    d.SetDialogElements("Confirm Choice", confirmString);
+                    _uiState = UIState.ConfirmScreen;
+                }
+                break;
+            case UIState.ConfirmScreen:
+                int confirm = d.GetResponse();
+                if (confirm >= 0)
+                {
+                    if (confirm == 0)
+                    {
+                        _uiState = UIState.DoingExperiment;
+                        _dialog.SetActive(false);
+                    } else // back
+                    {
+                        _uiState = UIState.Initialize;
+                    }
+                }
+                break;
+            case UIState.DoingExperiment:
+                if (_experiment == 0)
+                    DoAdjustTarget();
+                else
+                    DoWhereDidIGo();
+                break;
+            case UIState.ExperimentDone:
+                break;
+        }
+    }
+
+    private void DoAdjustTarget()
+    {
+    }
+
+    private void DoWhereDidIGo()
+    {
+                float _distance, _angle;
+        float x, y, z, tx, ty, tz;
         switch (experimentState)
         {
             case ExperimentState.BeforeMotion: // waiting befofre the first arm (of length _length1)
