@@ -104,6 +104,15 @@ public class SphereField {
         Debug.Log("Blobs created");
     }
 
+    public void DestroyGameObjects()
+    {
+        EnableAll(false);
+        for (int j = 0; j < NSEGS; j++)
+        {
+            UnityEngine.Object.Destroy(_blobs[j].Obj);
+        }
+    }
+
 
     /**
      * Compute T value for point on a line starting at (px,py,pz) with direction vector
