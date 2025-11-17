@@ -7,6 +7,7 @@ using System;
  * Copyright Michael Jenkin 2025
  * Version History
  * 
+ * V1.4 - mods for VR 
  * V1.3 - basically deal with everything except VR (and head tracking)
  * V1.2 - set up for new two task version
  * V1.1 - use a pointer for the final task rather than moving the point of view.
@@ -76,7 +77,8 @@ public class WolrdCreator : MonoBehaviour
 
     private GameObject _adjustTarget = null;
     private GameObject _reticle = null;
-    private GameObject _camera = null;
+    [SerializeField] private GameObject _camera = null; // Serialized so that we can set it in the editor to XR_origin,RA 11-16-2025
+
     private GameObject _welcome = null;
     private GameObject _dialog = null;
     private GameObject _home = null;
@@ -169,7 +171,7 @@ public class WolrdCreator : MonoBehaviour
         _reticle = GameObject.Find("Reticle");
         _reticle.SetActive(false);
 
-        _camera = GameObject.Find("Camera Holder");
+        //_camera = GameObject.Find("Camera Holder"); make this one explicit RA 11-16-2025
 
         _dialog = GameObject.Find("Dialog");
         _dialog.SetActive(false);
