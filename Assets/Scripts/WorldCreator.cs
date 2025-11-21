@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEditor;
 using System;
 
 /**
@@ -7,6 +8,7 @@ using System;
  * Copyright Michael Jenkin 2025
  * Version History
  * 
+ * V1.4 - better graphcis, getting ready for Android version
  * V1.3 - basically deal with everything except VR (and head tracking)
  * V1.2 - set up for new two task version
  * V1.1 - use a pointer for the final task rather than moving the point of view.
@@ -77,7 +79,6 @@ public class WolrdCreator : MonoBehaviour
     private GameObject _adjustTarget = null;
     private GameObject _reticle = null;
     private GameObject _camera = null;
-    private GameObject _welcome = null;
     private GameObject _dialog = null;
     private GameObject _home = null;
 
@@ -176,9 +177,6 @@ public class WolrdCreator : MonoBehaviour
 
         _home = GameObject.Find("Homebase");
         _home.SetActive(false);
-
-        _welcome = GameObject.Find("Welcome");
-        _welcome.SetActive(false);
     }
 
     /**
@@ -222,6 +220,11 @@ public class WolrdCreator : MonoBehaviour
             _conditions[index2] = z;
         }
 
+        Dialog d = _dialog.GetComponent<Dialog>();
+#if UNITY_EDITOR
+        d.SetDialogInstructions("L/R to select x to choose");
+#endif
+
     }
 
     /**
@@ -241,9 +244,8 @@ public class WolrdCreator : MonoBehaviour
                 _uiState = UIState.WelcomeScreen;
                 break;
             case UIState.WelcomeScreen:
-                Debug.Log("Welcome screen");
                 int response = d.GetResponse();
-                Debug.Log(response);
+                Debug.Log("Welcome screen got response " + response);
                 if (response >= 0)
                 {
                     _experiment = response;
@@ -290,6 +292,8 @@ public class WolrdCreator : MonoBehaviour
                 }
                 break;
             case UIState.ExperimentDone:
+                if(d.GetResponse() >= 0)
+                    QuitPlaying();
                 break;
         }
     }
@@ -555,7 +559,6 @@ public class WolrdCreator : MonoBehaviour
 
                 if (Input.GetKeyDown("x"))
                 {
-
                     _adjustTarget.SetActive(false);
                     _sf.DestroyGameObjects();
                     if (_cond < NCONDS - 1)
@@ -574,7 +577,13 @@ public class WolrdCreator : MonoBehaviour
                         _responseLog.Dump(Application.persistentDataPath + "/Responses" + _startTime + ".txt", _outputHeader);
                         _camera.transform.position = new Vector3(0.0f, 0.0f, 0.0f);
                         _camera.transform.rotation = Quaternion.Euler(0.0f, 0.0f, 0.0f);
-                        _welcome.SetActive(true);
+                        d.SetDialogElements("Completed", new string[] { "" });
+#if UNITY_EDITOR
+                        d.SetDialogInstructions("Press X to quit");
+#else
+                        d.SetDialogInstructions("Press trigger to quit");
+#endif
+                        _dialog.SetActive(true);
                         _experimentState = ExperimentState.Done;
                         _uiState = UIState.ExperimentDone;
                     }
@@ -642,7 +651,6 @@ public class WolrdCreator : MonoBehaviour
                             _spinDir = -1.0f;
                     }
 
-                    _welcome.SetActive(false);
                     _motion1Start = Time.time;
                     _distance = 0.0f;
                     _camera.transform.position = new Vector3(0, 0, _distance);
@@ -833,7 +841,13 @@ public class WolrdCreator : MonoBehaviour
                         _responseLog.Dump(Application.persistentDataPath + "/Responses" + _startTime + ".txt", _outputHeader);
                         _camera.transform.position = new Vector3(0.0f, 0.0f, 0.0f);
                         _camera.transform.rotation = Quaternion.Euler(0.0f, 0.0f, 0.0f);
-                        _welcome.SetActive(true);
+                       d.SetDialogElements("Completed", new string[] { "" });
+#if UNITY_EDITOR
+                        d.SetDialogInstructions("Press X to quit");
+#else
+                        d.SetDialogInstructions("Press trigger to quit");
+#endif
+                        _dialog.SetActive(true);
                         _experimentState = ExperimentState.Done;
                         _uiState = UIState.ExperimentDone;
                     }
@@ -849,6 +863,18 @@ public class WolrdCreator : MonoBehaviour
     {
         GameObject target = GameObject.Find(item);
         target.transform.position = new Vector3(x, y, z);
+    }
+
+      /**
+     * Quit the application
+     **/
+    public void QuitPlaying()
+    {
+#if UNITY_EDITOR
+        EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
 }

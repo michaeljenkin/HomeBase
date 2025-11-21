@@ -71,12 +71,9 @@ public class Dialog : MonoBehaviour
 
     // Update is called once per frame
     void Update()
-    {
-
-     
+    {  
         if (this.hasResponse)
             return;
-
 
         if (Input.GetKeyDown("up")|| Input.GetKeyDown(KeyCode.JoystickButton5))
         {
@@ -90,6 +87,8 @@ public class Dialog : MonoBehaviour
         }
         if(Input.GetKeyDown("x")|| Input.GetKeyDown(KeyCode.JoystickButton0))
         {
+            Debug.Log("Got an input event");
+            Debug.Log("Choice is " + this.currentChoice);
             this.hasResponse = true;
         }
     }

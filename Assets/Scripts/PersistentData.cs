@@ -1,14 +1,12 @@
-﻿/**
+/**
  * This maintains static information required over the experiments.
  * This must be initialized before being used
  * 
  * @author Michael Jenkin
- * @copyright 2017, 2018, 2019
+ * @copyright 2025
  * 
  * Version History
  * 
- * V4.0 - final (ha) version for the Ontario Science Centre
- * V3.0 - first version for the Ontario Science Centre
  * V1.0 - based on V8.0 of the ISS software
  **/
 
