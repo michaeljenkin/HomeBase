@@ -8,6 +8,7 @@ using System;
  * Copyright Michael Jenkin 2025
  * Version History
  * 
+ * V1.5 - Now with manual start between conditions
  * V1.4 - better graphcis, getting ready for Android version
  * V1.3 - basically deal with everything except VR (and head tracking)
  * V1.2 - set up for new two task version
@@ -33,12 +34,14 @@ public class WolrdCreator : MonoBehaviour
         Initialize,
         Setup,
         BeforeMotion,
+        WaitForAdjustTarget,
         LegOne,
         AdjustTarget1,
         Turning,
         AdjustOrientation,
         LegTwo,
         AdjustTarget2,
+        WaitForWhereDidIGo,
         TargetDirection,
         TargetDistance,
         Done
@@ -238,7 +241,6 @@ public class WolrdCreator : MonoBehaviour
         switch (_uiState)
         {
             case UIState.Initialize:
-                d.SetDialogTitle("Homebase");
                 d.SetDialogElements("Choose Experiment", new string[] { "Adjust Target?", "Where Did I Go?" });
                 _dialog.SetActive(true);
                 _uiState = UIState.WelcomeScreen;
@@ -292,6 +294,7 @@ public class WolrdCreator : MonoBehaviour
                 }
                 break;
             case UIState.ExperimentDone:
+                Debug.Log("In experiment done!");
                 if(d.GetResponse() >= 0)
                     QuitPlaying();
                 break;
@@ -311,7 +314,6 @@ public class WolrdCreator : MonoBehaviour
         {
             case ExperimentState.Initialize: // provide instructions
 
-                d.SetDialogTitle("Instructions");
                 d.SetDialogElements("Adjust Target", new string[] { "Indicate distance/direction" });
                 d.SetDialogInstructions("Press x to start");
                 _dialog.SetActive(true);
@@ -339,7 +341,6 @@ public class WolrdCreator : MonoBehaviour
 
                     _sf = new SphereField(NSPHERES, _length1, _length2, _turn, _turnRight, _pitch);
 
-                    _sf.EnableFirstHallway();
                     Debug.Log("STARTING CONDITION");
                     Debug.Log(_cond);
 
@@ -359,13 +360,23 @@ public class WolrdCreator : MonoBehaviour
                         else
                             _spinDir = -1.0f;
                     }
-
-                    _motion1Start = Time.time;
-                    _distance = 0.0f;
+                    _experimentState = ExperimentState.WaitForAdjustTarget;
+                    _distance = 0;
                     _camera.transform.position = new Vector3(0, 0, _distance);
                     _camera.transform.rotation = Quaternion.Euler(0.0f, 0.0f, 0.0f);
+                    d.SetDialogElements("Adjust Target", new string[] { "Condition " + _cond });
+                    d.SetDialogInstructions("Press x to start");
+                    _dialog.SetActive(true);
+                }
+                break;
+            case ExperimentState.WaitForAdjustTarget:
+                if (Input.GetKeyDown("x"))
+                {
+                    _dialog.SetActive(false);
+                    _sf.EnableFirstHallway();
+                    _motion1Start = Time.time;
                     _experimentState = ExperimentState.LegOne;
-                    Debug.Log("reset to 0");
+                    Debug.Log("Starting condition");
                 }
                 break;
             case ExperimentState.LegOne: // moving in direction (0,0,1) to _length1
@@ -578,11 +589,7 @@ public class WolrdCreator : MonoBehaviour
                         _camera.transform.position = new Vector3(0.0f, 0.0f, 0.0f);
                         _camera.transform.rotation = Quaternion.Euler(0.0f, 0.0f, 0.0f);
                         d.SetDialogElements("Completed", new string[] { "" });
-#if UNITY_EDITOR
                         d.SetDialogInstructions("Press X to quit");
-#else
-                        d.SetDialogInstructions("Press trigger to quit");
-#endif
                         _dialog.SetActive(true);
                         _experimentState = ExperimentState.Done;
                         _uiState = UIState.ExperimentDone;
@@ -604,8 +611,7 @@ public class WolrdCreator : MonoBehaviour
         {
              case ExperimentState.Initialize: // provide instructions
 
-                d.SetDialogTitle("Instructions");
-                d.SetDialogElements("Where did I go", new string[] { "Indicate distance/direction" });
+                d.SetDialogElements("Where did I go", new string[] { "Indicate direction/distance" });
                 d.SetDialogInstructions("Press x to start");
                 _dialog.SetActive(true);
                 _home.SetActive(true);
@@ -630,7 +636,6 @@ public class WolrdCreator : MonoBehaviour
                     _turnRight = _conditions[_cond][4] > 0;
 
                     _sf = new SphereField(NSPHERES, _length1, _length2, _turn, _turnRight, _pitch);
-                    _sf.EnableFirstHallway();
                     Debug.Log("STARTING CONDITION");
                     Debug.Log(_cond);
 
@@ -650,11 +655,23 @@ public class WolrdCreator : MonoBehaviour
                         else
                             _spinDir = -1.0f;
                     }
-
-                    _motion1Start = Time.time;
-                    _distance = 0.0f;
+                    _experimentState = ExperimentState.WaitForWhereDidIGo;
+                    _distance = 0;
                     _camera.transform.position = new Vector3(0, 0, _distance);
+                    _camera.transform.rotation = Quaternion.Euler(0.0f, 0.0f, 0.0f);
+                    d.SetDialogElements("Where Did I Go?", new string[] { "Condition " + _cond });
+                    d.SetDialogInstructions("Press x to start");
+                    _dialog.SetActive(true);
+                }
+                break;
+            case ExperimentState.WaitForWhereDidIGo:
+             if (Input.GetKeyDown("x"))
+                {
+                    _dialog.SetActive(false);
+                    _sf.EnableFirstHallway();
                     _experimentState = ExperimentState.LegOne;
+                    _motion1Start = Time.time;
+                    Debug.Log("Starting condition");
                 }
                 break;
             case ExperimentState.LegOne: // moving in direction (0,0,1) to _length1
@@ -842,11 +859,7 @@ public class WolrdCreator : MonoBehaviour
                         _camera.transform.position = new Vector3(0.0f, 0.0f, 0.0f);
                         _camera.transform.rotation = Quaternion.Euler(0.0f, 0.0f, 0.0f);
                        d.SetDialogElements("Completed", new string[] { "" });
-#if UNITY_EDITOR
                         d.SetDialogInstructions("Press X to quit");
-#else
-                        d.SetDialogInstructions("Press trigger to quit");
-#endif
                         _dialog.SetActive(true);
                         _experimentState = ExperimentState.Done;
                         _uiState = UIState.ExperimentDone;
